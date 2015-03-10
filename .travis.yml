@@ -5,13 +5,11 @@ jdk:
 notifications: 
   email: 
     recipients: 
-    - jeff.yemin@10gen.com
-    - ross@10gen.com
-    - trisha.gee@10gen.com
+    - manuel.schoenlaub@gmail.com
+    - sunterkr@edu.aau.at
+    
     on_success: change
     on_failure: always
-  flowdock:
-    secure: "Ziw1Be2tV0QAYuiYDrepfdNH/oBfNhnXFMji3AdRi6MePVpc6CtOOT/b9Fra\nQgMMrX3AHk/QIDo6QQx9/aVB3FS1fzOPGQkSsEZmiljZU7wZCct1sSSyttf/\nsRG0lyTnmgFNTHyTSDT3JbXAkyF/vJmG/JJJoBUZhmFxzR2fM0Q="
 
 branches:
   only:
@@ -20,9 +18,9 @@ branches:
 
 env:
   global:
-    - MONGO_REPO="http://repo.mongodb.com/apt/ubuntu"
-    - REPO_TYPE="precise/mongodb-enterprise/2.6 multiverse"
-    - SOURCES_LOC="/etc/apt/sources.list.d/mongodb-enterprise.list"
+    - MONGO_REPO="http://repo.mongodb.org/apt/ubuntu"
+    - REPO_TYPE="precise/mongodb-org/3.0 multiverse"
+    - SOURCES_LOC="/etc/apt/sources.list.d/mongodb-org-3.0.list"
     - KEY_SERVER="hkp://keyserver.ubuntu.com:80"
     - MONGOD_PARAMS="--setParameter=enableTestCommands=1"
     - MONGOD_OPTS="--dbpath ./data --fork --logpath mongod.log ${MONGOD_PARAMS}"
@@ -37,8 +35,8 @@ before_install:
     - sudo apt-get update -qq
 
 install:
-    # Install MongoDB Enterprise
-    - sudo apt-get install mongodb-enterprise-server
+    # Install MongoDB
+    - sudo apt-get install mongodb-org
     - sudo stop mongod
     - mkdir data
 
