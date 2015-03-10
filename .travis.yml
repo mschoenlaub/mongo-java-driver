@@ -6,7 +6,6 @@ notifications:
   email: 
     recipients: 
     - manuel.schoenlaub@gmail.com
-    - sunterkr@edu.aau.at
     
     on_success: change
     on_failure: always
