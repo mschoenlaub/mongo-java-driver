@@ -1,0 +1,5 @@
+#org.springsource.ide.eclipse.gradle.core.preferences.GradleProjectPreferences
+#Fri Mar 20 13:14:03 CET 2015
+build.family.org.gradle.tooling.model.eclipse.HierarchicalEclipseProject=;bson;driver;driver-async;driver-core;mongo-java-driver;util;
+org.springsource.ide.eclipse.gradle.linkedresources=
+org.springsource.ide.eclipse.gradle.rootprojectloc=
