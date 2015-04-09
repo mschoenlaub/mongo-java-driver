@@ -14,9 +14,9 @@ out
 mongo*.jar
 
 # Eclipse files
-.classpath
-.project
-.settings
+#.classpath
+#.project
+#.settings
 
 # Intellij IDEA files
 *.ipr
