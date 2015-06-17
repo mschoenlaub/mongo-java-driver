@@ -24,7 +24,11 @@ import com.mongodb.binding.ReadBinding;
 import com.mongodb.binding.WriteBinding;
 import com.mongodb.bulk.IndexRequest;
 import com.mongodb.bulk.InsertRequest;
+import com.mongodb.bulk.UpdateRequest;
+import com.mongodb.bulk.WriteRequest;
 import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
+import com.mongodb.operation.AggregateOperation;
 import com.mongodb.operation.BatchCursor;
 import com.mongodb.operation.CountOperation;
 import com.mongodb.operation.CreateCollectionOperation;
@@ -33,9 +37,11 @@ import com.mongodb.operation.DropCollectionOperation;
 import com.mongodb.operation.DropDatabaseOperation;
 import com.mongodb.operation.FindOperation;
 import com.mongodb.operation.InsertOperation;
+import com.mongodb.operation.MixedBulkWriteOperation;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.Document;
+import org.bson.codecs.BsonTypeClassMap;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.Codec;
 import org.bson.codecs.Decoder;
@@ -52,13 +58,15 @@ import java.util.List;
 import static com.mongodb.ClusterFixture.executeAsync;
 import static com.mongodb.ClusterFixture.getBinding;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 public final class CollectionHelper<T> {
 
     private Codec<T> codec;
     private CodecRegistry registry = CodecRegistries.fromProviders(new BsonValueCodecProvider(),
                                                                    new ValueCodecProvider(),
-                                                                   new DocumentCodecProvider());
+                                                                   new DocumentCodecProvider(),
+                                                                   new GeoJsonCodecProvider());
     private MongoNamespace namespace;
 
     public CollectionHelper(final Codec<T> codec, final MongoNamespace namespace) {
@@ -115,7 +123,7 @@ public final class CollectionHelper<T> {
     }
 
     public void insertDocuments(final Document... documents) {
-        insertDocuments(new DocumentCodec(), asList(documents));
+        insertDocuments(new DocumentCodec(registry, new BsonTypeClassMap()), asList(documents));
     }
 
     public <I> void insertDocuments(final Codec<I> iCodec, final I... documents) {
@@ -151,8 +159,40 @@ public final class CollectionHelper<T> {
         return results;
     }
 
+    public void updateOne(final Bson filter, final Bson update) {
+        updateOne(filter, update, false);
+    }
+
+    public void updateOne(final Bson filter, final Bson update, final boolean isUpsert) {
+        new MixedBulkWriteOperation(namespace,
+                                    singletonList(new UpdateRequest(filter.toBsonDocument(Document.class, registry),
+                                                                    update.toBsonDocument(Document.class, registry),
+                                                                    WriteRequest.Type.UPDATE)
+                                                  .upsert(isUpsert)),
+                                    true, WriteConcern.ACKNOWLEDGED)
+        .execute(getBinding());
+    }
+
     public List<T> find(final Bson filter) {
         return find(filter, null);
+    }
+
+    public List<T> aggregate(final List<Bson> pipeline) {
+        return aggregate(pipeline, codec);
+    }
+
+    public <D> List<D> aggregate(final List<Bson> pipeline, final Decoder<D> decoder) {
+        List<BsonDocument> bsonDocumentPipeline = new ArrayList<BsonDocument>();
+        for (Bson cur : pipeline) {
+            bsonDocumentPipeline.add(cur.toBsonDocument(Document.class, registry));
+        }
+        BatchCursor<D> cursor = new AggregateOperation<D>(namespace, bsonDocumentPipeline, decoder)
+                                .execute(getBinding());
+        List<D> results = new ArrayList<D>();
+        while (cursor.hasNext()) {
+            results.addAll(cursor.next());
+        }
+        return results;
     }
 
     public List<T> find(final Bson filter, final Bson sort) {

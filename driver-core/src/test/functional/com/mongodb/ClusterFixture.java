@@ -103,6 +103,10 @@ public final class ClusterFixture {
     }
 
     public static boolean serverVersionAtLeast(final List<Integer> versionArray) {
+        return getConnectedServerVersion().compareTo(new ServerVersion(versionArray)) >= 0;
+    }
+
+    private static ServerVersion getConnectedServerVersion() {
         ClusterDescription clusterDescription = getCluster().getDescription();
         int retries = 0;
         while (clusterDescription.getAny().isEmpty() && retries <= 3) {
@@ -117,7 +121,7 @@ public final class ClusterFixture {
         if (clusterDescription.getAny().isEmpty()) {
             throw new RuntimeException("There are no servers available in " + clusterDescription);
         }
-        return clusterDescription.getAny().get(0).getVersion().compareTo(new ServerVersion(versionArray)) >= 0;
+        return clusterDescription.getAny().get(0).getVersion();
     }
 
     static class ShutdownHook extends Thread {
@@ -162,14 +166,14 @@ public final class ClusterFixture {
         return new AsyncClusterBinding(cluster, ReadPreference.primary());
     }
 
-    public static Cluster getCluster() {
+    public static synchronized Cluster getCluster() {
         if (cluster == null) {
             cluster = createCluster(new SocketStreamFactory(getSocketSettings(), getSslSettings()));
         }
         return cluster;
     }
 
-    public static Cluster getAsyncCluster() {
+    public static synchronized Cluster getAsyncCluster() {
         if (asyncCluster == null) {
             asyncCluster = createCluster(getAsyncStreamFactory());
         }

@@ -19,6 +19,8 @@ package com.mongodb.connection;
 import com.mongodb.ServerAddress;
 import com.mongodb.TagSet;
 import com.mongodb.annotations.Immutable;
+import com.mongodb.annotations.NotThreadSafe;
+import org.bson.types.ObjectId;
 
 import java.text.DecimalFormat;
 import java.util.Collections;
@@ -50,6 +52,7 @@ public class ServerDescription {
     private final ServerAddress address;
 
     private final ServerType type;
+    private final String canonicalAddress;
     private final Set<String> hosts;
     private final Set<String> passives;
     private final Set<String> arbiters;
@@ -65,7 +68,9 @@ public class ServerDescription {
     private final int minWireVersion;
     private final int maxWireVersion;
 
-    private Throwable exception;
+    private final ObjectId electionId;
+
+    private final Throwable exception;
 
     /**
      * Gets a Builder for creating a new ServerDescription instance.
@@ -77,11 +82,23 @@ public class ServerDescription {
     }
 
     /**
+     * Gets the string representing the host name and port that this member of a replica set was configured with,
+     * e.g. {@code "somehost:27019"}. This is typically derived from the "me" field from the "isMaster" command response.
+     *
+     * @return the host name and port that this replica set member is configured with.
+     */
+    public String getCanonicalAddress() {
+        return canonicalAddress;
+    }
+
+    /**
      * A builder for creating ServerDescription.
      */
+    @NotThreadSafe
     public static class Builder {
         private ServerAddress address;
         private ServerType type = UNKNOWN;
+        private String canonicalAddress;
         private Set<String> hosts = Collections.emptySet();
         private Set<String> passives = Collections.emptySet();
         private Set<String> arbiters = Collections.emptySet();
@@ -95,6 +112,7 @@ public class ServerDescription {
         private ServerVersion version = new ServerVersion();
         private int minWireVersion = 0;
         private int maxWireVersion = 0;
+        private ObjectId electionId;
         private Throwable exception;
 
         /**
@@ -105,6 +123,19 @@ public class ServerDescription {
          */
         public Builder address(final ServerAddress address) {
             this.address = address;
+            return this;
+        }
+
+        /**
+         * Sets the canonical host name and port of this server. This is typically derived from the "me" field contained in the "isMaster"
+         * command. response.
+         *
+         * @param canonicalAddress the host name and port as a string
+         *
+         * @return this
+         */
+        public Builder canonicalAddress(final String canonicalAddress) {
+            this.canonicalAddress = canonicalAddress;
             return this;
         }
 
@@ -266,6 +297,17 @@ public class ServerDescription {
          */
         public Builder maxWireVersion(final int maxWireVersion) {
             this.maxWireVersion = maxWireVersion;
+            return this;
+        }
+
+        /**
+         * Sets the electionId reported by this server.
+         *
+         * @param electionId the electionId
+         * @return this
+         */
+        public Builder electionId(final ObjectId electionId) {
+            this.electionId = electionId;
             return this;
         }
 
@@ -469,6 +511,15 @@ public class ServerDescription {
     }
 
     /**
+     * The replica set electionid reported by this MongoDB server.
+     *
+     * @return the electionId, which may be null
+     */
+    public ObjectId getElectionId() {
+        return electionId;
+    }
+
+    /**
      * Returns true if the server has the given tags.  A server of either type {@code ServerType.STANDALONE} or {@code
      * ServerType.SHARD_ROUTER} is considered to have all tags, so this method will always return true for instances of either of those
      * types.
@@ -590,6 +641,9 @@ public class ServerDescription {
         if (!arbiters.equals(that.arbiters)) {
             return false;
         }
+        if (canonicalAddress != null ? !canonicalAddress.equals(that.canonicalAddress) : that.canonicalAddress != null) {
+            return false;
+        }
         if (!hosts.equals(that.hosts)) {
             return false;
         }
@@ -620,6 +674,9 @@ public class ServerDescription {
         if (maxWireVersion != that.maxWireVersion) {
             return false;
         }
+        if (electionId != null ? !electionId.equals(that.electionId) : that.electionId != null) {
+            return false;
+        }
 
         // Compare class equality and message as exceptions rarely override equals
         Class<?> thisExceptionClass = exception != null ? exception.getClass() : null;
@@ -641,6 +698,7 @@ public class ServerDescription {
     public int hashCode() {
         int result = address.hashCode();
         result = 31 * result + type.hashCode();
+        result = 31 * result + (canonicalAddress != null ? canonicalAddress.hashCode() : 0);
         result = 31 * result + hosts.hashCode();
         result = 31 * result + passives.hashCode();
         result = 31 * result + arbiters.hashCode();
@@ -648,6 +706,7 @@ public class ServerDescription {
         result = 31 * result + maxDocumentSize;
         result = 31 * result + tagSet.hashCode();
         result = 31 * result + (setName != null ? setName.hashCode() : 0);
+        result = 31 * result + (electionId != null ? electionId.hashCode() : 0);
         result = 31 * result + (ok ? 1 : 0);
         result = 31 * result + state.hashCode();
         result = 31 * result + version.hashCode();
@@ -670,12 +729,14 @@ public class ServerDescription {
                   + ", version=" + version
                   + ", minWireVersion=" + minWireVersion
                   + ", maxWireVersion=" + maxWireVersion
+                  + ", electionId=" + electionId
                   + ", maxDocumentSize=" + maxDocumentSize
                   + ", roundTripTimeNanos=" + roundTripTimeNanos
                   : "")
                + (isReplicaSetMember()
                   ?
                   ", setName='" + setName + '\''
+                  + ", canonicalAddress=" + canonicalAddress
                   + ", hosts=" + hosts
                   + ", passives=" + passives
                   + ", arbiters=" + arbiters
@@ -729,6 +790,7 @@ public class ServerDescription {
         type = notNull("type", builder.type);
         state = notNull("state", builder.state);
         version = notNull("version", builder.version);
+        canonicalAddress = builder.canonicalAddress;
         hosts = builder.hosts;
         passives = builder.passives;
         arbiters = builder.arbiters;
@@ -740,6 +802,7 @@ public class ServerDescription {
         ok = builder.ok;
         minWireVersion = builder.minWireVersion;
         maxWireVersion = builder.maxWireVersion;
+        electionId = builder.electionId;
         exception = builder.exception;
     }
 }

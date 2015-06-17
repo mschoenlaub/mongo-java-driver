@@ -119,12 +119,60 @@ public class JsonReaderTest {
     }
 
     @Test
+    public void testDateTimeShellWith24HourTimeSpecification() {
+        String json = "ISODate(\"2013-10-04T12:07:30.443Z\")";
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
+        assertEquals(1380888450443L, bsonReader.readDateTime());
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+    }
+
+    @Test
     public void testDateTimeStrict() {
         String json = "{ \"$date\" : 0 }";
         bsonReader = new JsonReader(json);
         assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
         assertEquals(0, bsonReader.readDateTime());
         assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+    }
+
+    @Test
+    public void testDateTimeISOString() {
+        String json = "{ \"$date\" : \"2015-04-16T14:55:57.626Z\" }";
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
+        assertEquals(1429196157626L, bsonReader.readDateTime());
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+    }
+
+    @Test
+    public void testDateTimeISOStringWithTimeOffset() {
+        String json = "{ \"$date\" : \"2015-04-16T16:55:57.626+02:00\" }";
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
+        assertEquals(1429196157626L, bsonReader.readDateTime());
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+    }
+
+    @Test(expected = JsonParseException.class)
+    public void testInvalidDateTimeISOString1() {
+        String json = "{ \"$date\" : \"2015-04-16T16:55:57.626+02:0000\" }";
+        bsonReader = new JsonReader(json);
+        bsonReader.readBsonType();
+    }
+
+    @Test(expected = JsonParseException.class)
+    public void testInvalidDateTimeISOString2() {
+        String json = "{ \"$date\" : \"2015-04-16T16:55:57.626Z invalid string\" }";
+        bsonReader = new JsonReader(json);
+        bsonReader.readBsonType();
+    }
+
+    @Test(expected = JsonParseException.class)
+    public void testInvalidDateTimeValue() {
+        String json = "{ \"$date\" : {} }";
+        bsonReader = new JsonReader(json);
+        bsonReader.readBsonType();
     }
 
     @Test
@@ -438,10 +486,32 @@ public class JsonReaderTest {
 
     @Test
     public void testString() {
-        String json = "\"abc\"";
+        String str = "abc";
+        String json = '"' + str + '"';
         bsonReader = new JsonReader(json);
         assertEquals(BsonType.STRING, bsonReader.readBsonType());
-        assertEquals("abc", bsonReader.readString());
+        assertEquals(str, bsonReader.readString());
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+
+        str = "\ud806\udc5c";
+        json = '"' + str + '"';
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.STRING, bsonReader.readBsonType());
+        assertEquals(str, bsonReader.readString());
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+
+        str = "\\ud806\\udc5c";
+        json = '"' + str + '"';
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.STRING, bsonReader.readBsonType());
+        assertEquals("\ud806\udc5c", bsonReader.readString());
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+
+        str = "꼢𑡜ᳫ鉠鮻罖᧭䆔瘉";
+        json = '"' + str + '"';
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.STRING, bsonReader.readBsonType());
+        assertEquals(str, bsonReader.readString());
         assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
     }
 

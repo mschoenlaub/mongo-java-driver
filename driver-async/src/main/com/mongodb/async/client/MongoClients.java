@@ -17,17 +17,23 @@
 package com.mongodb.async.client;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.connection.AsynchronousSocketChannelStreamFactory;
+import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
 import com.mongodb.connection.Cluster;
 import com.mongodb.connection.ClusterSettings;
 import com.mongodb.connection.ConnectionPoolSettings;
 import com.mongodb.connection.DefaultClusterFactory;
-import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.ServerSettings;
 import com.mongodb.connection.SocketSettings;
+import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.StreamFactory;
-import com.mongodb.connection.netty.NettyStreamFactory;
 import com.mongodb.management.JMXConnectionPoolListener;
+import org.bson.codecs.BsonValueCodecProvider;
+import org.bson.codecs.DocumentCodecProvider;
+import org.bson.codecs.ValueCodecProvider;
+import org.bson.codecs.configuration.CodecRegistry;
+
+import static java.util.Arrays.asList;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 /**
  * A factory for MongoClient instances.
@@ -90,6 +96,29 @@ public final class MongoClients {
                                          .build());
     }
 
+    /**
+     * Gets the default codec registry.  It includes the following providers:
+     *
+     * <ul>
+     *     <li>{@link org.bson.codecs.ValueCodecProvider}</li>
+     *     <li>{@link org.bson.codecs.DocumentCodecProvider}</li>
+     *     <li>{@link org.bson.codecs.BsonValueCodecProvider}</li>
+     *     <li>{@link com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider}</li>
+     * </ul>
+     *
+     * @return the default codec registry
+     * @see MongoClientSettings#getCodecRegistry()
+     * @since 3.1
+     */
+    public static CodecRegistry getDefaultCodecRegistry() {
+        return MongoClients.DEFAULT_CODEC_REGISTRY;
+    }
+
+    private static final CodecRegistry DEFAULT_CODEC_REGISTRY =
+            fromProviders(asList(new ValueCodecProvider(),
+                    new DocumentCodecProvider(),
+                    new BsonValueCodecProvider(),
+                    new GeoJsonCodecProvider()));
 
     private static Cluster createCluster(final MongoClientSettings settings, final StreamFactory streamFactory) {
         StreamFactory heartbeatStreamFactory = getHeartbeatStreamFactory(settings);
@@ -100,28 +129,11 @@ public final class MongoClients {
     }
 
     private static StreamFactory getHeartbeatStreamFactory(final MongoClientSettings settings) {
-        return getStreamFactory(settings.getHeartbeatSocketSettings(), settings.getSslSettings());
+        return settings.getStreamFactoryFactory().create(settings.getHeartbeatSocketSettings(), settings.getSslSettings());
     }
 
     private static StreamFactory getStreamFactory(final MongoClientSettings settings) {
-        return getStreamFactory(settings.getSocketSettings(), settings.getSslSettings());
-    }
-
-    private static StreamFactory getStreamFactory(final SocketSettings socketSettings,
-                                                  final SslSettings sslSettings) {
-        String streamType = System.getProperty("org.mongodb.async.type", "nio2");
-
-        if (streamType.equals("netty")) {
-            return new NettyStreamFactory(socketSettings, sslSettings);
-        } else if (streamType.equals("nio2")) {
-            if (sslSettings.isEnabled()) {
-                throw new IllegalArgumentException("Unsupported stream type " + streamType + " when SSL is enabled. Please use Netty "
-                                                   + "instead");
-            }
-            return new AsynchronousSocketChannelStreamFactory(socketSettings, sslSettings);
-        } else {
-            throw new IllegalArgumentException("Unsupported stream type " + streamType);
-        }
+        return settings.getStreamFactoryFactory().create(settings.getSocketSettings(), settings.getSslSettings());
     }
 
     private MongoClients() {

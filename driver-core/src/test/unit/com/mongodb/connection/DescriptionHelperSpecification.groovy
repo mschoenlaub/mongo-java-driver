@@ -19,6 +19,7 @@ package com.mongodb.connection
 import com.mongodb.ServerAddress
 import com.mongodb.Tag
 import com.mongodb.TagSet
+import org.bson.types.ObjectId
 import spock.lang.Specification
 
 import java.util.concurrent.TimeUnit
@@ -165,6 +166,7 @@ class DescriptionHelperSpecification extends Specification {
                          .maxDocumentSize(16777216)
                          .type(ServerType.REPLICA_SET_SECONDARY)
                          .setName('replset')
+                         .canonicalAddress('localhost:27017')
                          .hosts(['localhost:27017', 'localhost:27018', 'localhost:27019'] as Set)
                          .arbiters(['localhost:27020'] as Set)
                          .build()
@@ -172,6 +174,7 @@ class DescriptionHelperSpecification extends Specification {
 
     def 'server description should reflect ismaster result from primary'() {
         expect:
+        ObjectId electionId = new ObjectId();
         createServerDescription(serverAddress,
                                 parse('{' +
                                       '"setName" : "replset",' +
@@ -194,6 +197,7 @@ class DescriptionHelperSpecification extends Specification {
                                       '"localTime" : ISODate("2015-03-04T23:24:18.452Z"),' +
                                       '"maxWireVersion" : 3,' +
                                       '"minWireVersion" : 0,' +
+                                      '"electionId" : {$oid : "' + electionId.toHexString() + '" },' +
                                       'tags : { "dc" : "east", "use" : "production" }' +
                                       '"ok" : 1' +
                                       '}'), serverVersion, roundTripTime) ==
@@ -204,9 +208,11 @@ class DescriptionHelperSpecification extends Specification {
                          .version(serverVersion)
                          .maxWireVersion(3)
                          .maxDocumentSize(16777216)
+                         .electionId(electionId)
                          .type(ServerType.REPLICA_SET_PRIMARY)
                          .setName('replset')
                          .primary('localhost:27017')
+                         .canonicalAddress('localhost:27017')
                          .hosts(['localhost:27017', 'localhost:27018', 'localhost:27019'] as Set)
                          .arbiters(['localhost:27020'] as Set)
                          .tagSet(new TagSet([new Tag('dc', 'east'), new Tag('use', 'production')]))
@@ -250,6 +256,7 @@ class DescriptionHelperSpecification extends Specification {
                          .type(ServerType.REPLICA_SET_ARBITER)
                          .setName('replset')
                          .primary('localhost:27017')
+                         .canonicalAddress('localhost:27020' )
                          .hosts(['localhost:27017', 'localhost:27018', 'localhost:27019'] as Set)
                          .arbiters(['localhost:27020'] as Set)
                          .build()
@@ -292,6 +299,7 @@ class DescriptionHelperSpecification extends Specification {
                          .type(ServerType.REPLICA_SET_OTHER)
                          .setName('replset')
                          .primary('localhost:27017')
+                         .canonicalAddress('localhost:27020')
                          .hosts(['localhost:27017', 'localhost:27018', 'localhost:27019'] as Set)
                          .arbiters(['localhost:27020'] as Set)
                          .build()
@@ -320,6 +328,7 @@ class DescriptionHelperSpecification extends Specification {
                          .address(serverAddress)
                          .state(ServerConnectionState.CONNECTED)
                          .version(serverVersion)
+                         .canonicalAddress('localhost:27020' )
                          .maxWireVersion(3)
                          .maxDocumentSize(16777216)
                          .type(ServerType.REPLICA_SET_GHOST)

@@ -733,7 +733,7 @@ public class JsonReader extends AbstractBsonReader {
             throw new JsonParseException("JSON reader expected a string but found '%s'.", valueToken.getValue());
         }
         verifyToken(")");
-        String[] patterns = {"yyyy-MM-dd", "yyyy-MM-dd'T'hh:mm:ssz", "yyyy-MM-dd'T'hh:mm:ss.SSSz"};
+        String[] patterns = {"yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ssz", "yyyy-MM-dd'T'HH:mm:ss.SSSz"};
 
         SimpleDateFormat format = new SimpleDateFormat(patterns[0], Locale.ENGLISH);
         ParsePosition pos = new ParsePosition(0);
@@ -784,7 +784,7 @@ public class JsonReader extends AbstractBsonReader {
     }
 
     private long visitDateTimeConstructor() {
-        DateFormat df = new SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss z");
+        DateFormat format = new SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss z", Locale.ENGLISH);
 
         verifyToken("(");
 
@@ -795,7 +795,7 @@ public class JsonReader extends AbstractBsonReader {
             verifyToken(")");
             String s = token.getValue(String.class);
             ParsePosition pos = new ParsePosition(0);
-            Date dateTime = df.parse(s, pos);
+            Date dateTime = format.parse(s, pos);
             if (dateTime != null && pos.getIndex() == s.length()) {
                 return dateTime.getTime();
             } else {
@@ -823,7 +823,7 @@ public class JsonReader extends AbstractBsonReader {
             }
             if (pos == 1) {
                 return values[0];
-            } else if (pos < 3 && pos > 7) {
+            } else if (pos < 3 || pos > 7) {
                 throw new JsonParseException("JSON reader expected 1 or 3-7 integers but found %d.", pos);
             }
 
@@ -870,11 +870,20 @@ public class JsonReader extends AbstractBsonReader {
     private long visitDateTimeExtendedJson() {
         verifyToken(":");
         JsonToken valueToken = popToken();
-        if (valueToken.getType() != JsonTokenType.INT32 && valueToken.getType() != JsonTokenType.INT64) {
-            throw new JsonParseException("JSON reader expected an integer but found '%s'.", valueToken.getValue());
-        }
         verifyToken("}");
-        return valueToken.getValue(Long.class);
+
+        if (valueToken.getType() == JsonTokenType.INT32 || valueToken.getType() == JsonTokenType.INT64) {
+            return valueToken.getValue(Long.class);
+        } else if (valueToken.getType() == JsonTokenType.STRING) {
+            String dateTimeString = valueToken.getValue(String.class);
+            try {
+                return DatatypeConverter.parseDateTime(dateTimeString).getTimeInMillis();
+            } catch (IllegalArgumentException e) {
+                throw new JsonParseException("JSON reader expected an ISO-8601 date time string but found.", dateTimeString);
+            }
+        } else {
+            throw new JsonParseException("JSON reader expected an integer or string but found '%s'.", valueToken.getValue());
+        }
     }
 
     private MaxKey visitMaxKeyExtendedJson() {

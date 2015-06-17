@@ -19,6 +19,7 @@ package com.mongodb.connection;
 import com.mongodb.ServerAddress;
 import com.mongodb.Tag;
 import com.mongodb.TagSet;
+import org.bson.types.ObjectId;
 import org.junit.Test;
 
 import java.net.UnknownHostException;
@@ -80,12 +81,14 @@ public class ServerDescriptionTest {
         assertNull(serverDescription.getPrimary());
         assertEquals(Collections.<String>emptySet(), serverDescription.getHosts());
         assertEquals(new TagSet(), serverDescription.getTagSet());
+        assertNull(serverDescription.getCanonicalAddress());
         assertEquals(Collections.<String>emptySet(), serverDescription.getHosts());
         assertEquals(Collections.<String>emptySet(), serverDescription.getPassives());
         assertNull(serverDescription.getSetName());
         assertEquals(new ServerVersion(), serverDescription.getVersion());
         assertEquals(0, serverDescription.getMinWireVersion());
         assertEquals(0, serverDescription.getMaxWireVersion());
+        assertNull(serverDescription.getElectionId());
         assertNull(serverDescription.getException());
     }
 
@@ -100,6 +103,7 @@ public class ServerDescriptionTest {
                                               .maxDocumentSize(100)
                                               .roundTripTime(50000, java.util.concurrent.TimeUnit.NANOSECONDS)
                                               .primary("localhost:27017")
+                                              .canonicalAddress("localhost:27018")
                                               .hosts(new HashSet<String>(asList("localhost:27017",
                                                                                 "localhost:27018",
                                                                                 "localhost:27019",
@@ -111,6 +115,7 @@ public class ServerDescriptionTest {
                                               .version(new ServerVersion(asList(2, 4, 1)))
                                               .minWireVersion(1)
                                               .maxWireVersion(2)
+                                              .electionId(new ObjectId("123412341234123412341234"))
                                               .exception(exception)
                                               .build();
 
@@ -132,6 +137,7 @@ public class ServerDescriptionTest {
         assertEquals(100, serverDescription.getMaxDocumentSize());
 
         assertEquals("localhost:27017", serverDescription.getPrimary());
+        assertEquals("localhost:27018", serverDescription.getCanonicalAddress());
         assertEquals(new HashSet<String>(asList("localhost:27017", "localhost:27018", "localhost:27019", "localhost:27020")),
                      serverDescription.getHosts());
         assertEquals(new TagSet(new Tag("dc", "ny")), serverDescription.getTagSet());
@@ -141,6 +147,7 @@ public class ServerDescriptionTest {
         assertEquals(new ServerVersion(asList(2, 4, 1)), serverDescription.getVersion());
         assertEquals(1, serverDescription.getMinWireVersion());
         assertEquals(2, serverDescription.getMaxWireVersion());
+        assertEquals(new ObjectId("123412341234123412341234"), serverDescription.getElectionId());
         assertEquals(exception, serverDescription.getException());
     }
 
@@ -154,6 +161,7 @@ public class ServerDescriptionTest {
                                                                      .maxDocumentSize(100)
                                                                      .roundTripTime(50000, java.util.concurrent.TimeUnit.NANOSECONDS)
                                                                      .primary("localhost:27017")
+                                                                     .canonicalAddress("localhost:27017")
                                                                      .hosts(new HashSet<String>(asList("localhost:27017",
                                                                                                        "localhost:27018")))
                                                                      .passives(new HashSet<String>(asList("localhost:27019")))
@@ -161,7 +169,8 @@ public class ServerDescriptionTest {
                                                                      .state(CONNECTED)
                                                                      .version(new ServerVersion(asList(2, 4, 1)))
                                                                      .minWireVersion(1)
-                                                                     .maxWireVersion(2);
+                                                             .maxWireVersion(2)
+                                                             .electionId(new ObjectId());
         assertEquals(builder.build(), builder.build());
         assertEquals(builder.build().hashCode(), builder.build().hashCode());
         assertTrue(builder.build().toString().startsWith("ServerDescription"));

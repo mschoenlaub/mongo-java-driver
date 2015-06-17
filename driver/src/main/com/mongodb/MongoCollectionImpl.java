@@ -90,7 +90,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     MongoCollectionImpl(final MongoNamespace namespace, final Class<TDocument> documentClass, final CodecRegistry codecRegistry,
                         final ReadPreference readPreference, final WriteConcern writeConcern, final OperationExecutor executor) {
         this.namespace = notNull("namespace", namespace);
-        this.documentClass = notNull("clazz", documentClass);
+        this.documentClass = notNull("documentClass", documentClass);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);
         this.writeConcern = notNull("writeConcern", writeConcern);
@@ -169,8 +169,13 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
 
     @Override
     public <TResult> DistinctIterable<TResult> distinct(final String fieldName, final Class<TResult> resultClass) {
+        return distinct(fieldName, new BsonDocument(), resultClass);
+    }
+
+    @Override
+    public <TResult> DistinctIterable<TResult> distinct(final String fieldName, final Bson filter, final Class<TResult> resultClass) {
         return new DistinctIterableImpl<TDocument, TResult>(namespace, documentClass, resultClass, codecRegistry, readPreference, executor,
-                                                            fieldName);
+                fieldName, filter);
     }
 
     @Override
